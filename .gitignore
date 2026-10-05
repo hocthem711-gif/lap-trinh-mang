@@ -1,0 +1,47 @@
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# C / C++
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+bin/
+build/
+Debug/
+Release/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Node / Web (nếu có làm socket web)
+node_modules/
+npm-debug.log*
+
+# Logs & Temp files
+*.log
+tmp/
+temp/
