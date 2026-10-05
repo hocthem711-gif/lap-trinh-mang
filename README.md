@@ -1,42 +1,31 @@
-# Lập Trình Mạng (Network Programming)
+# Đồ Án Môn Học: Lập Trình Mạng
 
-Repository phục vụ học tập và làm việc nhóm môn **Lập trình mạng**.
+Repository lưu trữ mã nguồn và tài liệu dự án môn **Lập trình mạng**.
 
-## 👥 Thành viên nhóm
-- Tài khoản GitHub đại diện: [@hocthem711-gif](https://github.com/hocthem711-gif)
-- *(Cập nhật danh sách thành viên nhóm tại đây)*
-
----
-
-## 📂 Cấu trúc thư mục
-```
-lap-trinh-mang/
-├── exercises/          # Bài tập thực hành trên lớp / hàng tuần
-├── projects/           # Đồ án / Bài tập lớn
-├── docs/               # Tài liệu tham khảo, ghi chú môn học
-└── README.md
-```
+## 👥 Thành viên thực hiện
+| STT | Họ và tên | MSSV | Vai trò / Nhiệm vụ |
+|:---:|:---|:---:|:---|
+| 1 | *(Họ và tên)* | *(MSSV)* | Nhóm trưởng |
+| 2 | *(Họ và tên)* | *(MSSV)* | Thành viên |
 
 ---
 
-## 🛠️ Hướng dẫn đóng góp & làm việc nhóm với Git
+## 📖 Giới thiệu dự án
+*(Cập nhật tóm tắt đề tài / dự án môn học của nhóm)*
 
-1. **Clone repository về máy:**
-   ```bash
-   git clone https://github.com/hocthem711-gif/lap-trinh-mang.git
-   cd lap-trinh-mang
-   ```
+---
 
-2. **Tạo nhánh (branch) riêng cho từng tính năng / bài tập:**
-   ```bash
-   git checkout -b feature/ten-thanh-vien-bai-tap-1
-   ```
+## 🛠️ Công nghệ sử dụng
+- **Ngôn ngữ:** *(Cập nhật ngôn ngữ dự án sử dụng)*
+- **Giao thức:** Socket (TCP/UDP), HTTP, WebSocket,...
+- **Công cụ hỗ trợ:** Git, IDE
 
-3. **Commit và đẩy code lên GitHub:**
-   ```bash
-   git add .
-   git commit -m "feat: hoàn thành bài tập 1"
-   git push origin feature/ten-thanh-vien-bai-tap-1
-   ```
+---
 
-4. **Tạo Pull Request (PR)** trên GitHub để nhóm cùng review trước khi merge vào nhánh `main`.
+## 🚀 Hướng dẫn cài đặt và chạy thử
+```bash
+# 1. Clone repository
+git clone https://github.com/hocthem711-gif/lap-trinh-mang.git
+
+# 2. Hướng dẫn chạy dự án sẽ được cập nhật tại đây khi có code
+```
