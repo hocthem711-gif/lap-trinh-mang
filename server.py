@@ -1,11 +1,9 @@
 """Server TCP checkpoint 1: chờ Client và gửi file được yêu cầu."""
-
 import argparse  
 import logging  
 import socket  
 from file_service import handle_client 
 from logger_setup import create_logger  
-
 
 def parse_args() -> argparse.Namespace: 
     """Đọc IP, port và thư mục chia sẻ từ lệnh chạy."""
@@ -41,12 +39,10 @@ def run_server(host: str, port: int, share_dir: str) -> None:
         server_socket.close() 
         logger.info("Server đã dừng") 
 
-
 def main() -> None:  
     """Khởi động Server với cấu hình trên terminal."""
     args = parse_args() 
     run_server(args.host, args.port, args.share_dir)  
-
 
 if __name__ == "__main__":  
     main() 
