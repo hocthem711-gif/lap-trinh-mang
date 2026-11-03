@@ -45,3 +45,7 @@ npm-debug.log*
 *.log
 tmp/
 temp/
+
+# UDM_11 runtime output
+/Downloads/
+*.part

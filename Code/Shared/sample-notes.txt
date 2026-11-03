@@ -1,0 +1,1 @@
+Select both files in the GUI and drag them to the download list.
