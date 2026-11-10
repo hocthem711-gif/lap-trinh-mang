@@ -9,6 +9,7 @@ from protocol import CHUNK_SIZE, recv_message, send_message
 
 def is_valid_filename(name: object) -> bool:
     """Chỉ cho phép tên file đơn; từ chối đường dẫn và ký tự không hợp lệ."""
+    """Chỉ chấp nhận tên file đơn nằm trong thư mục chia sẻ."""
     return (
         isinstance(name, str)
         and bool(name)
@@ -16,6 +17,7 @@ def is_valid_filename(name: object) -> bool:
         and ".." not in name
         and "/" not in name
         and "\\" not in name
+        and "\0" not in name
         and not os.path.isabs(name)
         and os.path.basename(name) == name
         and not any(character in name for character in '<>:"|?*')
