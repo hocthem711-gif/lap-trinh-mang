@@ -11,6 +11,23 @@ from protocol import CHUNK_SIZE, SOCKET_TIMEOUT, recv_message, send_message
 ProgressCallback = Callable[[int, int, float], None]
 
 
+def is_valid_filename(filename: object) -> bool:
+    """Chỉ chấp nhận tên file đơn, không phải đường dẫn."""
+    """Kiểm tra tên file trước khi gửi yêu cầu hoặc tạo file trên Client."""
+    return (
+        isinstance(filename, str)
+        and bool(filename)
+        and filename not in {".", ".."}
+        and ".." not in filename
+        and "/" not in filename
+        and "\\" not in filename
+        and "\0" not in filename
+        and not os.path.isabs(filename)
+        and os.path.basename(filename) == filename
+        and not any(character in filename for character in '<>:"|?*')
+    )
+
+
 def list_files(host: str, port: int) -> list[dict]:
     """Mở kết nối LIST riêng, nhận tên/kích thước file rồi đóng kết nối."""
     with socket.create_connection((host, port), timeout=SOCKET_TIMEOUT) as server:
@@ -20,15 +37,17 @@ def list_files(host: str, port: int) -> list[dict]:
 
     files = response.get("files")
     if response.get("status") != "OK" or not isinstance(files, list):
-        raise RuntimeError(response.get("message", "Server không trả được danh sách file"))
+        code = response.get("code", "SERVER_ERROR")
+        message = response.get("message", "Server không trả được danh sách file")
+        raise RuntimeError(f"{code}: {message}")
     for file_info in files:
         if (
             not isinstance(file_info, dict)
-            or not isinstance(file_info.get("name"), str)
-            or not isinstance(file_info.get("size"), int)
+            or not is_valid_filename(file_info.get("name"))
+            or type(file_info.get("size")) is not int
             or file_info["size"] < 0
         ):
-            raise ValueError("Danh sách file Server gửi không hợp lệ")
+            raise ValueError("Thông tin file Server gửi không hợp lệ")
     return files
 
 
@@ -58,14 +77,7 @@ def download_file(
     on_progress: ProgressCallback,
 ) -> tuple[str, bool]:
     """Tải vào file .part rồi đổi tên sau khi nhận đủ byte."""
-    if (
-        not filename
-        or filename in {".", ".."}
-        or ".." in filename
-        or "/" in filename
-        or "\\" in filename
-        or any(character in filename for character in '<>:"|?*')
-    ):
+    if not is_valid_filename(filename):
         raise ValueError("Tên file không hợp lệ")
 
     os.makedirs(download_dir, exist_ok=True)
@@ -85,7 +97,7 @@ def download_file(
                 raise RuntimeError(f"{code}: {response.get('message', 'Lỗi Server')}")
 
             size = response.get("size")
-            if not isinstance(size, int) or size < 0:
+            if type(size) is not int or size < 0:
                 raise ValueError("Kích thước file Server gửi không hợp lệ")
 
             received = 0
