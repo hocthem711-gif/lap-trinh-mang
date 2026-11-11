@@ -221,7 +221,7 @@ def main() -> None:
     """Đọc cấu hình Client rồi mở vòng lặp giao diện Tkinter."""
     parser = argparse.ArgumentParser(description="UDM_11 Client")
     parser.add_argument("--host", required=True, help="Server IP address or hostname")
-    parser.add_argument("--port", type=int, required=True, help="Port TCP")
+    parser.add_argument("--port", type=int, required=True, help="TCP port")
     parser.add_argument("--download-dir", required=True, help="Folder for downloaded files")
     parser.add_argument("--max-downloads", type=int, default=3)
     args = parser.parse_args()
