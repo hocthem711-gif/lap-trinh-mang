@@ -1,4 +1,4 @@
-"""Các thao tác TCP của Client: LIST và tải file."""
+"""Các thao tác mạng của Client: lấy danh sách file và tải file."""
 
 import os
 import socket
@@ -13,7 +13,6 @@ ProgressCallback = Callable[[int, int, float], None]
 
 def is_valid_filename(filename: object) -> bool:
     """Chỉ chấp nhận tên file đơn, không phải đường dẫn."""
-    """Kiểm tra tên file trước khi gửi yêu cầu hoặc tạo file trên Client."""
     return (
         isinstance(filename, str)
         and bool(filename)
@@ -29,17 +28,20 @@ def is_valid_filename(filename: object) -> bool:
 
 
 def list_files(host: str, port: int) -> list[dict]:
-    """Mở kết nối LIST riêng, nhận tên/kích thước file rồi đóng kết nối."""
+    """Mở kết nối riêng gửi LIST, nhận danh sách [{name, size}] rồi đóng kết nối."""
     with socket.create_connection((host, port), timeout=SOCKET_TIMEOUT) as server:
         server.settimeout(SOCKET_TIMEOUT)
         send_message(server, {"command": "LIST"})
         response = recv_message(server)
 
-    files = response.get("files")
-    if response.get("status") != "OK" or not isinstance(files, list):
+    if response.get("status") != "OK":
         code = response.get("code", "SERVER_ERROR")
         message = response.get("message", "Server không trả được danh sách file")
         raise RuntimeError(f"{code}: {message}")
+
+    files = response.get("files")
+    if not isinstance(files, list):
+        raise ValueError("Danh sách file Server gửi không hợp lệ")
     for file_info in files:
         if (
             not isinstance(file_info, dict)
@@ -51,20 +53,17 @@ def list_files(host: str, port: int) -> list[dict]:
     return files
 
 
-def _choose_output_path(download_dir: str, filename: str) -> tuple[str, bool]:
-    """Đặt trước một tên file chưa tồn tại để tránh ghi đè khi tải đồng thời."""
+def choose_output_path(download_dir: str, filename: str) -> tuple[str, bool]:
+    """Quy tắc file đã tồn tại: giữ cả hai, file mới đổi tên thành 'ten (1).txt', 'ten (2).txt'..."""
     name, extension = os.path.splitext(filename)
     number = 0
     while True:
         suffix = f" ({number})" if number else ""
-        output_path = os.path.join(download_dir, f"{name}{suffix}{extension}")
+        path = os.path.join(download_dir, f"{name}{suffix}{extension}")
         try:
-            descriptor = os.open(
-                output_path,
-                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-            )
-            os.close(descriptor)
-            return output_path, number > 0
+            # O_EXCL: tạo thất bại nếu file đã có, nên hai luồng tải cùng tên không ghi đè nhau.
+            os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return path, number > 0
         except FileExistsError:
             number += 1
 
@@ -76,7 +75,11 @@ def download_file(
     download_dir: str,
     on_progress: ProgressCallback,
 ) -> tuple[str, bool]:
-    """Tải vào file .part rồi đổi tên sau khi nhận đủ byte."""
+    """Tải vào file .part, nhận đủ byte mới đổi tên thành file chính thức.
+
+    on_progress(đã_nhận, tổng, tốc_độ_byte_trên_giây) được gọi khoảng mỗi 0,5 giây.
+    Trả về (đường_dẫn_file, có_bị_đổi_tên).
+    """
     if not is_valid_filename(filename):
         raise ValueError("Tên file không hợp lệ")
 
@@ -85,27 +88,29 @@ def download_file(
         prefix=".udm11-", suffix=".part", dir=download_dir
     )
     os.close(descriptor)
+    reserved_path = None
 
     try:
-        # Mỗi file GET có TCP socket riêng để lỗi được cô lập theo từng file.
+        # Mỗi file một socket riêng, nên lỗi của file này không ảnh hưởng file khác.
         with socket.create_connection((host, port), timeout=SOCKET_TIMEOUT) as server:
             server.settimeout(SOCKET_TIMEOUT)
             send_message(server, {"command": "GET", "name": filename})
             response = recv_message(server)
             if response.get("status") != "OK":
                 code = response.get("code", "SERVER_ERROR")
-                raise RuntimeError(f"{code}: {response.get('message', 'Lỗi Server')}")
+                message = response.get("message", "Lỗi Server")
+                raise RuntimeError(f"{code}: {message}")
 
             size = response.get("size")
             if type(size) is not int or size < 0:
                 raise ValueError("Kích thước file Server gửi không hợp lệ")
 
             received = 0
-            last_update = time.monotonic()
             previous_received = 0
-            # File chưa hoàn chỉnh chỉ được ghi vào .part, không ghi vào tên cuối.
+            last_update = time.monotonic()
             with open(temporary_path, "wb") as output:
                 while received < size:
+                    # Chỉ đọc đúng số byte còn thiếu để không đọc lấn sang dữ liệu khác.
                     chunk = server.recv(min(CHUNK_SIZE, size - received))
                     if not chunk:
                         raise ConnectionError(f"Server ngắt kết nối ({received}/{size} byte)")
@@ -114,22 +119,20 @@ def download_file(
 
                     now = time.monotonic()
                     if now - last_update >= 0.5:
-                        # Tốc độ được tính từ số byte nhận trong khoảng thời gian vừa qua.
                         speed = (received - previous_received) / (now - last_update)
                         on_progress(received, size, speed)
                         previous_received = received
                         last_update = now
 
-        output_path, renamed = _choose_output_path(download_dir, filename)
-        try:
-            # Chỉ công bố file hoàn chỉnh sau khi vòng lặp nhận đủ size byte.
-            os.replace(temporary_path, output_path)
-        except OSError:
-            if os.path.exists(output_path):
-                os.remove(output_path)
-            raise
+        output_path, renamed = choose_output_path(download_dir, filename)
+        reserved_path = output_path
+        os.replace(temporary_path, output_path)  # công bố file sau khi đã nhận đủ
+        reserved_path = None
         on_progress(size, size, 0)
-        return str(output_path), renamed
+        return output_path, renamed
     finally:
+        # Lỗi giữa chừng thì xóa file dở dang; tải thành công thì file .part đã được đổi tên.
         if os.path.exists(temporary_path):
             os.remove(temporary_path)
+        if reserved_path and os.path.exists(reserved_path):
+            os.remove(reserved_path)

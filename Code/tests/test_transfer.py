@@ -27,6 +27,7 @@ class TransferTests(unittest.TestCase):
     def test_invalid_path_name_is_rejected(self):
         self.assertFalse(is_valid_filename("../secret.txt"))
         self.assertFalse(is_valid_filename(r"..\secret.txt"))
+        self.assertFalse(is_valid_filename("\0secret.txt"))
         self.assertTrue(is_valid_filename("hello.txt"))
 
     def test_server_returns_error_for_path_traversal(self):
@@ -40,12 +41,25 @@ class TransferTests(unittest.TestCase):
 
     def test_server_reports_missing_file(self):
         port, thread = self.start_server()
-        with socket.create_connection(("127.0.0.1", port), timeout=3) as client:
-            send_message(client, {"command": "GET", "name": "missing.txt"})
-            response = recv_message(client)
+        with self.assertLogs("udm11.test", level="WARNING") as logs:
+            with socket.create_connection(("127.0.0.1", port), timeout=3) as client:
+                send_message(client, {"command": "GET", "name": "missing.txt"})
+                response = recv_message(client)
         thread.join(timeout=2)
         self.assertEqual(response["status"], "ERROR")
         self.assertEqual(response["code"], "FILE_NOT_FOUND")
+        self.assertIn("missing.txt", logs.output[0])
+
+    def test_server_logs_invalid_command(self):
+        port, thread = self.start_server()
+        with self.assertLogs("udm11.test", level="WARNING") as logs:
+            with socket.create_connection(("127.0.0.1", port), timeout=3) as client:
+                send_message(client, {"command": "UNKNOWN"})
+                response = recv_message(client)
+        thread.join(timeout=2)
+        self.assertEqual(response["status"], "ERROR")
+        self.assertEqual(response["code"], "BAD_REQUEST")
+        self.assertIn("UNKNOWN", logs.output[0])
 
     def start_server(self, count=1):
         listener = socket.socket()
@@ -123,7 +137,7 @@ class TransferTests(unittest.TestCase):
         with open(existing, "rb") as file:
             self.assertEqual(file.read(), b"old data")
 
-    def test_same_file_can_be_downloaded_twice_in_one_session(self):
+    def test_same_file_can_be_downloaded_twice(self):
         content = b"download the same file again"
         with open(os.path.join(self.shared.name, "again.txt"), "wb") as file:
             file.write(content)
@@ -143,7 +157,6 @@ class TransferTests(unittest.TestCase):
         for path in (first_path, second_path):
             with open(path, "rb") as file:
                 self.assertEqual(file.read(), content)
-
 
 if __name__ == "__main__":
     unittest.main()
