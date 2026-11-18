@@ -41,7 +41,7 @@ Chạy các lệnh từ thư mục gốc dự án. Trên máy Windows, mở hai 
 **Cửa sổ 1 — khởi động Server:**
 
 ```powershell
-python Code\server.py --host 127.0.0.1 --port 5000 --share-dir ".\shared"
+python Code\server.py --host 127.0.0.1 --port 5000 --share-dir "Code\shared"
 ```
 
 **Cửa sổ 2 — khởi động Client GUI:**
