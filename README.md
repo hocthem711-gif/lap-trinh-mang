@@ -1,141 +1,157 @@
-# UDM_11 - Ứng dụng tải nhiều file qua TCP
+# UDM_11 — Ứng dụng GUI tải nhiều file qua TCP/IP
 
-Đồ án môn **Lập trình mạng**: ứng dụng Client có giao diện Tkinter để xem danh sách file trên Server và tải một hoặc nhiều file qua TCP. Server và Client là hai chương trình riêng biệt; mỗi lệnh `LIST` và mỗi lần tải `GET` sử dụng một kết nối TCP riêng.
+**Mã đề tài:** UDM_11 — Download nhiều file  
+**Mã nhóm:** NET_262701302_14  
+**Môi trường:** Python 3.10 trở lên, Tkinter và thư viện chuẩn Python. Không cần cài package bên thứ ba.
+
+Ứng dụng gồm Server cung cấp danh sách/nội dung file và Client GUI để tải file
+qua TCP. Client hỗ trợ chọn/kéo nhiều file vào hàng đợi; mỗi file có trạng thái,
+tốc độ và phần trăm tiến trình riêng. Mặc định tối đa 3 file được tải đồng thời.
 
 ## Thành viên và phân công
 
-| STT | Thành viên | MSSV | Module phụ trách |
-|---:|---|---:|---|
-| 1 | Trần Nguyễn Bảo Hoàng | 066206004994 | `Code/protocol.py` - giao thức và đóng gói dữ liệu |
-| 2 | Nguyễn Thị Phương Hòa | 058306000195 | `Code/server.py` - TCP listener và quản lý kết nối |
-| 3 | Võ Trí Hoa | 082306004425 | `Code/file_service.py` - xử lý `LIST`, `GET` và truyền file |
-| 4 | Nguyễn Khánh Đăng | 080206013032 | `Code/client_core.py` - kết nối Client, nhận và lưu file |
-| 5 | Nguyễn Huỳnh Hoa | 083306013301 | `Code/client_gui.py` - giao diện, kéo thả và hàng đợi |
+| Thành viên | Phần phụ trách |
+|---|---|
+| Trần Nguyễn Bảo Hoàng | `protocol.py`, `performance_test.py` |
+| Nguyễn Thị Phương Hòa | `server.py` |
+| Võ Trí Hoa | `file_service.py` |
+| Nguyễn Khánh Đăng | `client_core.py` |
+| Nguyễn Huỳnh Hoa | `client_gui.py` |
 
-## Cấu trúc project
+## Cấu trúc dự án
 
 ```text
-lap-trinh-mang/
-├── Code/
-│   ├── Shared/                 # File mẫu để Server chia sẻ
-│   ├── tests/                  # Kiểm thử giao thức và truyền file
-│   ├── client_core.py
-│   ├── client_gui.py
-│   ├── file_service.py
-│   ├── protocol.py
-│   └── server.py
-├── DOCX/                       # Báo cáo và tài liệu Word
-├── Extra/                      # Tài liệu, dữ liệu bổ sung
-├── PPTX/                       # Slide thuyết trình
-├── .gitignore
-└── README.md
+Code/
+├── protocol.py      # Định dạng và gửi/nhận header TCP
+├── server.py        # TCP listener và thread phục vụ Client
+├── file_service.py  # Xử lý LIST/GET, đọc và gửi file
+├── client_core.py   # Kết nối Server, tải file và lưu xuống máy
+├── client_gui.py    # Tkinter GUI, bảng trạng thái, hàng đợi và worker
+├── performance_test.py
+└── tests/           # Kiểm thử tự động
+shared/              # File mẫu Server chia sẻ
+downloads/           # Thư mục mặc định để Client lưu file tải xuống
+Extra/               # CSV do benchmark tạo ra
 ```
 
-Thư mục `Downloads/` được tạo khi tải file nếu chưa tồn tại và đã được Git bỏ qua. File log (`*.log`), file tạm (`*.part`) và cache Python cũng không được đưa lên Git.
+## Yêu cầu và cách chạy
 
-## Yêu cầu
+Chạy các lệnh từ thư mục gốc dự án. Trên máy Windows, mở hai cửa sổ PowerShell.
 
-- Python 3.10 trở lên.
-- Chỉ dùng thư viện chuẩn Python: socket, threading, queue, json, os, argparse, logging, time, tempfile và Tkinter/ttk.
-- Máy cần có Tkinter để chạy giao diện đồ họa.
-- Không cần cài package Python bên ngoài.
-
-## Chạy ứng dụng
-
-Mở hai cửa sổ Terminal tại thư mục gốc project.
-
-### 1. Khởi động Server
-
-Ví dụ trên cùng một máy:
+**Cửa sổ 1 — khởi động Server:**
 
 ```powershell
-python Code/server.py --host 127.0.0.1 --port 5000 --share-dir Code/Shared
+python Code\server.py --host 127.0.0.1 --port 5000 --share-dir ".\shared"
 ```
 
-Để Client ở máy khác trong mạng LAN kết nối được, bind Server vào interface mạng, ví dụ:
+**Cửa sổ 2 — khởi động Client GUI:**
 
 ```powershell
-python Code/server.py --host 0.0.0.0 --port 5000 --share-dir Code/Shared
+python Code\client_gui.py --host 127.0.0.1 --port 5000 --download-dir ".\downloads" --max-downloads 3
 ```
 
-Trong trường hợp này, Client phải dùng địa chỉ IP LAN của máy chạy Server; firewall cũng cần cho phép kết nối TCP đến port đã chọn. Server ghi log ra console và `server.log`. Nhấn `Ctrl+C` để dừng.
+Server và Client là hai tiến trình riêng, kể cả khi chạy trên cùng máy.
+Để kết nối từ máy khác, thay `127.0.0.1` bằng IP LAN của máy Server và cho phép
+cổng TCP đã chọn qua tường lửa. Thư mục `--share-dir` phải tồn tại.
 
-### 2. Khởi động Client
+## Giao thức trao đổi
 
-```powershell
-python Code/client_gui.py --host 127.0.0.1 --port 5000 --download-dir Downloads --max-downloads 3
-```
+Mỗi header là một object JSON UTF-8 trên một dòng, kết thúc bằng ký tự xuống
+dòng (`\n`). `LIST` và `GET` dùng kết nối TCP riêng. Sau header thành công của
+`GET`, nội dung file được gửi dưới dạng byte nhị phân, không phải JSON.
 
-Thay `127.0.0.1` bằng IP/hostname của Server nếu Client chạy trên máy khác. Tham số `--max-downloads` phải là số nguyên dương và giới hạn số lượt tải đồng thời trong **một cửa sổ Client**.
-
-### 3. Sử dụng giao diện
-
-1. Nút **Refresh** lấy lại danh sách file Server.
-2. Chọn một hoặc nhiều file trong danh sách bên trái (Ctrl/Shift để chọn nhiều).
-3. Kéo lựa chọn sang khu vực Download bên phải, hoặc nhấn **Thêm file đã chọn**.
-4. Mỗi file có hàng riêng với trạng thái, tốc độ và phần trăm tiến trình. Những file vượt giới hạn tải đồng thời sẽ ở trạng thái chờ.
-5. Khi tên file đã tồn tại trong thư mục đích, Client không ghi đè mà chọn tên tiếp theo, ví dụ `hello (1).txt`.
-
-Các trạng thái gồm chờ, đang tải, hoàn thành, lỗi và đã tồn tại/đổi tên. Lỗi ở một lượt tải được báo trên hàng tương ứng, không dừng những lượt tải khác.
-
-## Giao thức TCP
-
-TCP là luồng byte nên mỗi header JSON được mã hóa UTF-8 và kết thúc bằng byte xuống dòng `\n`. Với `GET`, header phản hồi được gửi trước, sau đó Server gửi đúng số byte nội dung file; phần thân nhị phân không có dấu phân cách JSON.
-
-### `LIST`
-
-Client kết nối, gửi:
+Ví dụ yêu cầu tải file:
 
 ```json
-{"command":"LIST"}
+{"command":"GET","name":"a.txt"}
 ```
 
-Server phản hồi một dòng JSON:
+Phản hồi thành công `GET` thông báo kích thước trước khi gửi nội dung:
 
 ```json
-{"status":"OK","files":[{"name":"hello.txt","size":20}]}
+{"status":"OK","size":12}
 ```
 
-`size` tính bằng byte. Nếu không đọc được thư mục chia sẻ, Server trả `status: ERROR` với mã lỗi và thông báo.
-
-### `GET`
-
-Client mở một kết nối mới cho file cần tải và gửi:
+Sau header trên, Server gửi đúng 12 byte nội dung file. Phản hồi lỗi có dạng:
 
 ```json
-{"command":"GET","name":"hello.txt"}
+{"status":"ERROR","code":"FILE_NOT_FOUND","message":"Không tìm thấy file trong thư mục chia sẻ"}
 ```
 
-Nếu thành công, Server gửi header:
+`LIST` trả danh sách tên và kích thước, ví dụ:
 
 ```json
-{"status":"OK","size":20}
+{"status":"OK","files":[{"name":"a.txt","size":12}]}
 ```
 
-Ngay sau newline của header, Server gửi nội dung file theo các khối tối đa `CHUNK_SIZE` (4096 byte). Client đọc cho đến khi đủ `size` byte. Nếu có lỗi, Server trả header JSON `status: ERROR`, kèm `code` và `message`; ví dụ `INVALID_NAME`, `FILE_NOT_FOUND`, `BAD_REQUEST` hoặc `INTERNAL_ERROR`.
+## Cách hoạt động
 
-### Trình tự và xử lý file chưa hoàn chỉnh
+Mô hình: `Client GUI → Client Core → TCP socket → Server → File Service`.
 
-1. Client mở TCP socket có timeout và gửi một header JSON.
-2. Server nhận header, xử lý lệnh, rồi gửi header phản hồi.
-3. Với `GET` thành công, Server gửi body nhị phân; Client nhận và ghi vào file tạm `.part`.
-4. Chỉ khi nhận đủ kích thước đã khai báo, Client mới đổi file tạm thành tên đích. Khi kết nối bị ngắt hoặc ghi file lỗi, file `.part` được dọn và lượt tải đó báo lỗi.
-5. Hai phía đóng socket sau khi hoàn tất hoặc gặp lỗi.
-
-Server chỉ phục vụ file nằm trực tiếp trong thư mục chia sẻ và từ chối tên chứa đường dẫn hoặc `..`. Client không ghi đè file đã có. Mỗi lần tải dùng kết nối riêng; Server phục vụ các kết nối bằng thread riêng.
+1. Client gửi `LIST`; Server trả danh sách file trong thư mục chia sẻ.
+2. Khi người dùng chọn/kéo file, GUI tạo một job tải và đưa vào hàng đợi.
+3. Các worker xử lý tối đa số job được cấu hình; mỗi file dùng kết nối riêng.
+4. Server gửi header có kích thước, rồi truyền nội dung file theo các khối 4096 byte.
+5. Client ghi vào file `.part`; chỉ sau khi nhận đủ byte mới đổi sang tên hoàn chỉnh.
+6. Nếu tên đích đã tồn tại, Client chọn tên như `a (1).txt` để không ghi đè file cũ.
+7. Lỗi của một job được báo riêng và không dừng các job còn lại.
 
 ## Kiểm thử
 
-Chạy từ thư mục gốc project:
+Chạy toàn bộ kiểm thử tự động từ thư mục gốc:
 
 ```powershell
-python -m unittest discover -s Code/tests -v
+python -m unittest discover -s Code\tests -v
 ```
 
-Bộ test kiểm tra đóng gói header, phát hiện ngắt kết nối khi nhận thiếu byte, từ chối path traversal, phản hồi file không tồn tại, truyền file qua TCP, dọn file `.part` khi truyền bị ngắt và tự đổi tên khi đích đã tồn tại.
+Các test dùng dữ liệu tạm cho những ca LIST/GET, metadata sai, file không tồn
+tại, tên file không hợp lệ, file trùng tên, tải bị ngắt và logic hàng đợi/kéo-thả.
+`test_gui_logic.py` kiểm tra logic bằng widget giả; cần chạy Client GUI riêng để
+nghiệm thu giao diện trực quan. Máy Python cần có Tkinter.
 
-## Ghi chú phạm vi
+### Kiểm tra thủ công trước khi nộp
 
-- Ứng dụng không hỗ trợ pause/resume.
-- Giới hạn đồng thời được áp dụng ở Client; đây không phải giới hạn tổng toàn Server.
-- Giao thức hiện không mã hóa dữ liệu và không có xác thực người dùng; chỉ chia sẻ với các máy tin cậy trong mạng phù hợp.
+- Làm mới danh sách Server, rồi tải một file và kiểm tra nội dung file nhận được.
+- Kéo nhiều file vào khu vực tải; xác nhận số job đang chạy không vượt quá
+  `--max-downloads` và các job khác chờ trong hàng đợi.
+- Tải file rỗng, file có dấu cách/tên tiếng Việt và cùng một file hai lần.
+- Bắt đầu tải `demo-large.bin`, dừng Server bằng `Ctrl+C`; Client cần báo lỗi,
+  các file `.part` dở dang cần được dọn.
+- Kiểm tra `server.log` để xem log kết nối và lỗi phía Server.
+
+### File mẫu trong `shared/`
+
+| File | Dùng để kiểm tra |
+|---|---|
+| `test-empty.bin` | Tải file 0 byte |
+| `test file name co space.txt` | Tên file có dấu cách |
+| `test-tieng-viet.txt` | Nội dung UTF-8 tiếng Việt |
+| `test-medium-1mb.bin` | Tải file nhị phân 1 MiB |
+| `demo-test-10mb.bin` | Tải/benchmark file nhị phân 10 MiB |
+| `demo-large.bin` | Tải file lớn 50 MiB và thử ngắt kết nối |
+
+## Benchmark
+
+Khởi động Server trước. Từ terminal khác, chạy lệnh sau:
+
+```powershell
+python Code\performance_test.py --host 127.0.0.1 --port 5000 --file demo-test-10mb.bin --jobs 6
+```
+
+Script chạy hai mức đồng thời: 1 và 3 worker. `--jobs` là tổng số lượt tải
+ở mỗi mức (mặc định 6). Kết quả thành công/thất bại, thời gian và throughput
+được lưu thành CSV trong `Extra\`. Đây là benchmark trên kết nối được chỉ định;
+kết quả localhost không đại diện cho tốc độ trên mạng LAN/Internet.
+
+Khi đưa kết quả vào báo cáo, ghi rõ CPU, RAM, hệ điều hành, kích thước file,
+số job, địa chỉ chạy benchmark (localhost hay LAN) và số liệu CSV thực tế.
+Không dùng số liệu mẫu hoặc số đo trên máy khác làm kết quả của nhóm.
+
+## Giới hạn
+
+- Chưa hỗ trợ Pause/Resume, đăng nhập hoặc mã hóa TLS; các chức năng này ngoài phạm vi.
+- Tiến trình tải hiển thị bằng phần trăm trong bảng trạng thái, không phải thanh progress bar đồ họa.
+
+## Video demo
+
+**Link video Public/Unlisted:** nhóm cập nhật link sau khi tải video lên.
