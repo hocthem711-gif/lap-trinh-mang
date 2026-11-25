@@ -135,7 +135,7 @@ nghiệm thu giao diện trực quan. Máy Python cần có Tkinter.
 Khởi động Server trước. Từ terminal khác, chạy lệnh sau:
 
 ```powershell
-python Code\performance_test.py --host 127.0.0.1 --port 5000 --file demo-test-10mb.bin --jobs 6
+python Code\performance_test.py --host 127.0.0.1 --port 5000 --file demo-larger.bin --jobs 6
 ```
 
 Script chạy hai mức đồng thời: 1 và 3 worker. `--jobs` là tổng số lượt tải
