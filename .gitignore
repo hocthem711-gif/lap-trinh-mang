@@ -11,4 +11,4 @@ env/
 .DS_Store
 Thumbs.db
 /downloads/
-/Extra/*.csv
+
